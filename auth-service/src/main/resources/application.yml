@@ -1,0 +1,86 @@
+spring:
+  application:
+    name: auth-service  # Servis adı — log ve monitoring'de görünür
+
+  # ── Veritabanı bağlantısı ──
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:digitalbank}?currentSchema=auth_schema
+    # ${ENV_VAR:default}: Önce ortam değişkeni, yoksa default değer kullanılır
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    # HikariCP: Spring Boot'un varsayılan connection pool'u
+    # Yüksek trafikte connection pool kritik — her istek DB bağlantısı oluşturmasın
+    hikari:
+      maximum-pool-size: 10      # Maksimum eşzamanlı DB bağlantısı
+      minimum-idle: 2            # Minimum hazır bağlantı sayısı
+      connection-timeout: 30000  # Bağlantı zaman aşımı (ms)
+      idle-timeout: 600000       # Boşta bağlantının yaşam süresi (ms)
+
+  # ── JPA / Hibernate ──
+  jpa:
+    hibernate:
+      ddl-auto: validate
+      # validate: Flyway migration'lar şemayı yönetir, Hibernate sadece doğrular
+      # Alternatifler: create (her seferinde sil/oluştur — test için), update (prodüksiyonda tehlikeli!)
+    show-sql: false              # Prodüksiyonda false — dev'de true yapılabilir
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        default_schema: auth_schema  # Tüm JPA sorguları bu schema'yı kullanır
+        format_sql: true
+        jdbc:
+          batch_size: 20         # Toplu INSERT/UPDATE performans optimizasyonu
+
+  # ── Flyway (DB Migration) ──
+  flyway:
+    enabled: true
+    locations: classpath:db/migration  # Migration dosyaları buradan okunur
+    schemas: auth_schema               # Flyway bu schema'yı yönetir
+    baseline-on-migrate: true          # Varolan DB üzerine migrate etmeye izin ver
+
+  # ── Redis ──
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000  # Bağlantı zaman aşımı (ms) — Redis cevap vermezse uygulama donmasın
+
+# ── JWT Yapılandırması ──
+jwt:
+  secret: ${JWT_SECRET:bXlTdXBlclNlY3JldEtleUZvckRpZ2l0YWxCYW5rUGxhdGZvcm0yMDI0}
+  # Base64 encoded secret — minimum 256 bit (32 byte) olmalı (HMAC-SHA256 için)
+  # Prodüksiyonda güçlü, rastgele bir değer kullanın ve environment variable'dan alın
+  access-token-expiration: 900000    # 15 dakika (milisaniye)
+  refresh-token-expiration: 604800000 # 7 gün (milisaniye)
+
+# ── Sunucu ──
+server:
+  port: ${SERVER_PORT:8081}
+  # auth-service portu: 8081
+  servlet:
+    context-path: /  # URL prefix'i yok — direkt /auth/login şeklinde erişilir
+  error:
+    include-message: never    # Hata mesajlarında sistem detayı gösterme (güvenlik)
+    include-stacktrace: never  # Stack trace'i istemciye yansıtma
+
+# ── Actuator (Kubernetes Health Probe) ──
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info  # Sadece health ve info endpoint'lerini aç
+  endpoint:
+    health:
+      show-details: when-authorized  # Sadece yetkili kullanıcılar detay görsün
+      probes:
+        enabled: true  # Kubernetes liveness/readiness probe'larını aktif et
+
+# ── Loglama ──
+logging:
+  level:
+    com.digitalbank: ${LOG_LEVEL:INFO}   # Uygulama logları
+    org.springframework.security: WARN   # Spring Security logları (genellikle INFO çok gürültülü)
+    org.hibernate.SQL: WARN              # SQL logları (prodüksiyonda kapalı)
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

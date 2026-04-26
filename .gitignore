@@ -1,0 +1,57 @@
+# ─── Java / Maven ───
+target/
+*.class
+*.jar
+*.war
+*.ear
+.mvn/wrapper/maven-wrapper.jar
+!.mvn/wrapper/maven-wrapper.properties
+
+# ─── Spring Boot ───
+application-local.yml
+application-local.properties
+
+# ─── IDE ───
+.idea/
+*.iml
+*.iws
+*.ipr
+.classpath
+.project
+.settings/
+*.swp
+*.swo
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# ─── Angular / Node ───
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/.env
+
+# ─── Logs ───
+*.log
+logs/
+spring.log
+
+# ─── Docker ───
+.docker/
+
+# ─── OS ───
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Environment / Secrets ───
+.env
+.env.local
+.env.production
+*.secret
+
+# ─── Test ───
+*.html
+!src/**/*.html

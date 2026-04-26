@@ -1,0 +1,6 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: digitalbank
+  labels:
+    app.kubernetes.io/name: digitalbank

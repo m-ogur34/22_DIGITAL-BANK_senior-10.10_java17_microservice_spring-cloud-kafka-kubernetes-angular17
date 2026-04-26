@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  DigitalBank Platform - Root POM
+  Multi-module Maven projesi.
+  Bu POM tüm alt modülleri yönetir; ortak bağımlılık versiyonlarını burada
+  tanımlayarak her modülde tekrar yazmaktan kaçınırız (DependencyManagement).
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- Spring Boot'u parent olarak alarak tüm Spring versiyonlarını otomatik yönetiriz -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.2.3</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.digitalbank</groupId>
+    <artifactId>digitalbank</artifactId>
+    <version>1.0.0</version>
+    <!-- packaging=pom: bu proje kendisi jar üretmez, alt modülleri organize eder -->
+    <packaging>pom</packaging>
+    <name>DigitalBank Platform</name>
+    <description>Kapsamlı Dijital Bankacılık Platformu - Mülakat ve Öğrenim Projesi</description>
+
+    <!-- Alt modüller: Maven build sırasında bu sırayla derlenir -->
+    <modules>
+        <module>common-lib</module>          <!-- Önce ortak kütüphane derlenir -->
+        <module>auth-service</module>
+        <module>account-service</module>
+        <module>transaction-service</module>
+        <module>loan-service</module>
+        <module>notification-service</module>
+    </modules>
+
+    <properties>
+        <java.version>17</java.version>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- JWT kütüphanesi versiyonu -->
+        <jjwt.version>0.12.3</jjwt.version>
+
+        <!-- Testcontainers: gerçek DB/Kafka ile integration test -->
+        <testcontainers.version>1.19.6</testcontainers.version>
+
+        <!-- MapStruct: DTO <-> Entity dönüşümü için (Lombok ile birlikte kullanılır) -->
+        <mapstruct.version>1.5.5.Final</mapstruct.version>
+    </properties>
+
+    <!--
+      dependencyManagement: Versiyonları merkezi olarak tanımlarız.
+      Alt modüller bu bağımlılıkları <version> yazmadan kullanabilir.
+    -->
+    <dependencyManagement>
+        <dependencies>
+
+            <!-- ===== COMMON-LIB ===== -->
+            <!-- Kendi ortak kütüphanemiz; diğer servisler buna bağımlıdır -->
+            <dependency>
+                <groupId>com.digitalbank</groupId>
+                <artifactId>common-lib</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- ===== JWT (JJWT) ===== -->
+            <!-- io.jsonwebtoken: Token üretme ve doğrulama için endüstri standardı -->
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-api</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-impl</artifactId>
+                <version>${jjwt.version}</version>
+                <scope>runtime</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-jackson</artifactId>
+                <version>${jjwt.version}</version>
+                <scope>runtime</scope>
+            </dependency>
+
+            <!-- ===== TESTCONTAINERS ===== -->
+            <!-- Test sırasında gerçek Docker container başlatır: PostgreSQL, Kafka, Redis -->
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+        </dependencies>
+    </dependencyManagement>
+
+    <!-- Tüm modüllerde ortak bağımlılıklar -->
+    <dependencies>
+        <!-- Lombok: @Data, @Builder, @Slf4j vb. boilerplate kodunu otomatik üretir -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Test: JUnit 5 + Mockito (Spring Boot starter içinde gelir) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <!-- Spring Boot plugin: executable JAR/WAR üretir -->
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                    <configuration>
+                        <!-- Lombok annotation processor'ı exclude ederek runtime'a karışmasını önleriz -->
+                        <excludes>
+                            <exclude>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                            </exclude>
+                        </excludes>
+                    </configuration>
+                </plugin>
+
+                <!-- Maven Compiler Plugin: Java 17 ile derleme -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <configuration>
+                        <source>17</source>
+                        <target>17</target>
+                        <annotationProcessorPaths>
+                            <!-- Lombok'u annotation processor olarak ekleriz -->
+                            <path>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                            </path>
+                        </annotationProcessorPaths>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+
+</project>

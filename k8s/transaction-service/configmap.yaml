@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: transaction-service-config
+  namespace: digitalbank
+data:
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://transaction-db-service:5432/transaction_db"
+  SPRING_DATASOURCE_USERNAME: "transaction_user"
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka-service:9092"
+  SPRING_ELASTICSEARCH_URIS: "http://elasticsearch-service:9200"
+  SPRING_DATA_REDIS_HOST: "redis-service"
+  SPRING_DATA_REDIS_PORT: "6379"
+  ACCOUNT_SERVICE_URL: "http://account-service:8082"
+  SERVER_PORT: "8083"

@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: loan-service
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:digitalbank}?currentSchema=loan_schema
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    hikari:
+      maximum-pool-size: 10
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        default_schema: loan_schema
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    schemas: loan_schema
+    baseline-on-migrate: true
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+jwt:
+  secret: ${JWT_SECRET:bXlTdXBlclNlY3JldEtleUZvckRpZ2l0YWxCYW5rUGxhdGZvcm0yMDI0}
+  access-token-expiration: 900000
+  refresh-token-expiration: 604800000
+
+server:
+  port: ${SERVER_PORT:8084}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  level:
+    com.digitalbank: ${LOG_LEVEL:INFO}

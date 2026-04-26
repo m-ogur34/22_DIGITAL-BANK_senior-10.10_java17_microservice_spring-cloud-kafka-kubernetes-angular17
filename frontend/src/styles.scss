@@ -1,0 +1,54 @@
+// Angular Material tema — indigo/pink, density -1
+@use '@angular/material' as mat;
+
+@include mat.core();
+
+$theme: mat.define-theme((
+  color: (
+    theme-type: light,
+    primary: mat.$indigo-palette,
+    tertiary: mat.$pink-palette,
+  ),
+  density: (scale: -1)
+));
+
+html {
+  @include mat.all-component-themes($theme);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: Roboto, sans-serif;
+  background-color: #f5f5f5;
+  color: #333;
+}
+
+// Global kart stili — sayfalar bu sınıfı kullanır
+.page-card {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 16px;
+}
+
+// Tablo scrollable wrapper
+.table-container {
+  overflow-x: auto;
+  border-radius: 4px;
+}
+
+// Para formatı — yeşil/kırmızı
+.amount-positive { color: #4caf50; font-weight: 500; }
+.amount-negative { color: #f44336; font-weight: 500; }
+
+// Chip renkleri (işlem durumu)
+.status-chip-COMPLETED  { background: #e8f5e9 !important; color: #388e3c !important; }
+.status-chip-PENDING    { background: #fff8e1 !important; color: #f57f17 !important; }
+.status-chip-FAILED     { background: #ffebee !important; color: #c62828 !important; }
+.status-chip-REVERSED   { background: #e3f2fd !important; color: #1565c0 !important; }

@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: loan-service-config
+  namespace: digitalbank
+data:
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://loan-db-service:5432/loan_db"
+  SPRING_DATASOURCE_USERNAME: "loan_user"
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka-service:9092"
+  SERVER_PORT: "8084"
