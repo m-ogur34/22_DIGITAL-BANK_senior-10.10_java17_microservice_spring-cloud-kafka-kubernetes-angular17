@@ -129,49 +129,92 @@ public class LoanService {
     }
 
     /**
-     * Decorator zinciri oluşturur.
-     * Sigorta isteniyorsa SigortaDecorator, her zaman DosyaMasrafiDecorator eklenir.
+     * Decorator zinciri oluşturur — Decorator Pattern.
+     *
+     * Decorator Pattern:
+     *   Temel hesaplayıcıyı (BaseLoanCalculator) sarmalar.
+     *   Her Decorator ek maliyet ekler ve altındaki hesaplamayı çağırır.
+     *
+     * Zincir örneği (sigorta istendiyse):
+     *   DosyaMasrafiDecorator
+     *     └── SigortaDecorator
+     *           └── BaseLoanCalculator
+     *
+     * hesapla() çağrıldığında:
+     *   DosyaMasrafi.hesapla() → SigortaDecorator.hesapla() → Base.hesapla()
+     *   = anaparaxfaiz + sigorta masrafı + dosya masrafı
+     *
+     * Neden if-else değil Decorator?
+     *   if(sigorta && dosya) → ...
+     *   if(!sigorta && dosya) → ...
+     *   Yeni masraf tipi eklenince her kombinasyon büyür (2^N).
+     *   Decorator: Her masraf bağımsız — birbirini etkilemez, kolayca eklenir.
      */
     private LoanCalculator buildCalculator(LoanApplicationRequest request) {
         LoanCalculator calc = baseLoanCalculator;
         if (request.isSigortaIsteniyor()) {
-            calc = new SigortaDecorator(calc);
+            calc = new SigortaDecorator(calc); // Ana kredi sigortası ekle
         }
-        calc = new DosyaMasrafiDecorator(calc);
+        calc = new DosyaMasrafiDecorator(calc); // Her kredide dosya masrafı zorunlu
         return calc;
     }
 
     /**
-     * Aylık eşit taksit planı üretir (annuity yöntemi).
-     * Her taksitte anapara payı artar, faiz payı azalır.
+     * Aylık eşit taksit planı üretir — Eşit Taksitli Ödeme (Annuity) Yöntemi.
+     *
+     * Annuity (Eşit Taksit) formülü:
+     *   Taksit = Anapara × [r(1+r)^n] / [(1+r)^n - 1]
+     *   r = aylık faiz oranı (örn: %1.5 → 0.015)
+     *   n = taksit sayısı
+     *   Bu MoneyUtils.calculateMonthlyInstallment() ile hesaplanır.
+     *
+     * Taksit dağılımı (her ay nasıl hesaplanır?):
+     *   1. Faiz payı = Kalan anapara × aylık faiz oranı
+     *      İlk ay: 100.000 × 0.015 = 1.500 TL faiz
+     *   2. Anapara payı = Taksit - Faiz payı
+     *      Taksit 4.000 TL ise: 4.000 - 1.500 = 2.500 TL anapara
+     *   3. Kalan anapara azalır: 100.000 - 2.500 = 97.500 TL
+     *   4. Sonraki ay: 97.500 × 0.015 = 1.462 TL faiz (daha az!)
+     *   → İlerleyen taksitlerde faiz payı azalır, anapara payı artar.
+     *   → Toplam taksit miktarı sabit kalır.
+     *
+     * Son taksit yuvarlama düzeltmesi:
+     *   BigDecimal hesaplamalarında küçük yuvarlama hataları birikir.
+     *   Son taksitte kalan anaparayı tam olarak kullan.
+     *   Aksi halde: son ödeme sonrası 0.01-0.02 TL artık bakiye kalabilir.
      */
     private List<Installment> generateInstallmentPlan(LoanApplication loan) {
         List<Installment> plan = new ArrayList<>();
-        BigDecimal remainingPrincipal = loan.getApprovedAmount();
+        BigDecimal remainingPrincipal = loan.getApprovedAmount(); // Başlangıç anapara
+        // Aylık faiz oranı: %18 yıllık → %1.5 aylık → 0.015
         BigDecimal monthlyRate = loan.getLoanType().getMonthlyInterestRate()
                 .divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP);
 
         for (int i = 1; i <= loan.getTermMonths(); i++) {
-            // Faiz payı: kalan anapara × aylık faiz
+            // 1. Faiz payı = Bu ay kalan anaparaya uygulanan faiz
             BigDecimal interestAmount = remainingPrincipal.multiply(monthlyRate)
                     .setScale(2, RoundingMode.HALF_UP);
-            // Anapara payı: taksit - faiz
+            // 2. Anapara payı = Sabit taksit - faiz payı
             BigDecimal principalAmount = loan.getMonthlyInstallment().subtract(interestAmount)
                     .setScale(2, RoundingMode.HALF_UP);
-            // Yuvarlama hatasını son taksitte düzelt
+            // 3. Son taksit yuvarlama düzeltmesi
+            //    BigDecimal kusuratları biriktirince son ayda 0.01-0.02 TL artık kalabilir.
+            //    Çözüm: Son taksitte principalAmount = kalan tam anapara.
             if (i == loan.getTermMonths()) {
-                principalAmount = remainingPrincipal;
+                principalAmount = remainingPrincipal; // Kalan her kuruşu öde
             }
+            // 4. Kalan anapara güncelle (bir sonraki taksit hesabı için)
             remainingPrincipal = remainingPrincipal.subtract(principalAmount)
                     .setScale(2, RoundingMode.HALF_UP);
 
             Installment installment = Installment.builder()
                     .loanApplication(loan)
                     .installmentNumber(i)
-                    .dueDate(LocalDate.now().plusMonths(i))
-                    .amount(loan.getMonthlyInstallment())
-                    .principalAmount(principalAmount)
-                    .interestAmount(interestAmount)
+                    .dueDate(LocalDate.now().plusMonths(i)) // Vade tarihi: bugün + i ay
+                    .amount(loan.getMonthlyInstallment())   // Sabit taksit tutarı
+                    .principalAmount(principalAmount)       // Bu taksitte ödenen anapara
+                    .interestAmount(interestAmount)         // Bu taksitte ödenen faiz
+                    // max(ZERO): Son taksit yuvarlama sonrası -0.01 olabilir → 0 yap
                     .remainingPrincipal(remainingPrincipal.max(BigDecimal.ZERO))
                     .paid(false)
                     .build();
